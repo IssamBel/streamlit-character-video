@@ -6,21 +6,25 @@ from rembg import remove
 from PIL import Image
 from itertools import product
 import zipfile
-import subprocess
-import os
+import secrets
+import string
 from moviepy.editor import VideoFileClip
 
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
+st.set_page_config(page_title="🎬 Multi-Combo Character Video Generator", layout="wide")
+
+# -----------------------------
+# UTILITY FUNCTIONS
+# -----------------------------
+def generate_random_name(length=9):
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
+
 def convert_to_webm(input_path, output_path):
-    """
-    Convert MP4 to WebM (VP8/VP9) for browser-safe playback in Streamlit.
-    """
     clip = VideoFileClip(input_path)
     clip.write_videofile(output_path, codec="libvpx", audio_codec="libvorbis")
     return output_path
-
-# ======================
-# FUNCTIONS
-# ======================
 
 def remove_background(input_path, output_path="output.png", width=494, height=505):
     img = cv2.imread(input_path)
@@ -29,10 +33,7 @@ def remove_background(input_path, output_path="output.png", width=494, height=50
 
     _, encoded_img = cv2.imencode(".png", img)
     result = remove(encoded_img.tobytes())
-
-    result_array = cv2.imdecode(
-        np.frombuffer(result, np.uint8), cv2.IMREAD_UNCHANGED
-    )
+    result_array = cv2.imdecode(np.frombuffer(result, np.uint8), cv2.IMREAD_UNCHANGED)
     resized = cv2.resize(result_array, (width, height), interpolation=cv2.INTER_AREA)
     cv2.imwrite(output_path, resized)
     return output_path
@@ -145,12 +146,10 @@ def create_spinning_character_video(
     out.release()
     return output_path
 
-# ======================
-# STREAMLIT APP
-# ======================
-
+# -----------------------------
+# FOLDERS
+# -----------------------------
 st.title("🎬 Multi-Combo Character Video Generator")
-
 background_folder = "backgrounds"
 character_folder = "characters"
 output_folder = "videos"
@@ -158,12 +157,14 @@ os.makedirs(background_folder, exist_ok=True)
 os.makedirs(character_folder, exist_ok=True)
 os.makedirs(output_folder, exist_ok=True)
 
-# Upload section
+# -----------------------------
+# UPLOAD FILES
+# -----------------------------
 st.sidebar.header("📂 Upload Files")
 bg_files = st.sidebar.file_uploader("Upload Background(s)", type=["jpg","png"], accept_multiple_files=True)
 char_files = st.sidebar.file_uploader("Upload Character(s)", type=["jpg","png"], accept_multiple_files=True)
 
-# Save uploads
+# Save background uploads
 if bg_files:
     for file in bg_files:
         file_path = os.path.join(background_folder, file.name)
@@ -171,32 +172,89 @@ if bg_files:
         safe_path = os.path.splitext(file_path)[0] + ".png"
         img.save(safe_path, "PNG")
 
+# Save character uploads AND auto remove background
 if char_files:
     for file in char_files:
         file_path = os.path.join(character_folder, file.name)
         with open(file_path, "wb") as f:
             f.write(file.read())
+        # Automatically remove background
+        no_bg_path = os.path.join(character_folder, f"no_bg_{file.name}.png")
+        remove_background(file_path, no_bg_path)
 
+# -----------------------------
+# LOAD FILE LISTS
+# -----------------------------
 bg_list = [f for f in os.listdir(background_folder) if f.lower().endswith((".jpg",".png"))]
-char_list = [f for f in os.listdir(character_folder) if f.lower().endswith((".jpg",".png"))]
+char_list = [f for f in os.listdir(character_folder) if f.lower().startswith("no_bg_")]
 
-# Remove background
-# Remove background
-if st.button("🪄 Remove Backgrounds"):
-    for c in char_list:
-        # Skip if already processed
-        if c.startswith("no_bg_"):
-            continue
-        path_in = os.path.join(character_folder, c)
-        path_out = os.path.join(character_folder, f"no_bg_{c}.png")
-        remove_background(path_in, path_out)
-    st.success("✅ Backgrounds removed!")
+# -----------------------------
+# BACKGROUND MULTI-SELECTION
+# -----------------------------
+st.subheader("🖼️ Background Selection")
+selected_bgs = []
 
+bg_count = len(bg_list)
+cols_per_row = min(bg_count, 6)  # max 6 columns
 
-# ======================
-# Video parameters
-# ======================
+# Dynamically set image size
+if bg_count <= 2:
+    img_size = 150
+elif bg_count <= 4:
+    img_size = 120
+else:
+    img_size = 80
 
+for i in range(0, bg_count, cols_per_row):
+    row_cols = st.columns(cols_per_row, gap="small")
+    for j, bg in enumerate(bg_list[i:i+cols_per_row]):
+        img_path = os.path.join(background_folder, bg)
+        img = Image.open(img_path)
+        if img.mode in ("RGBA", "LA"):
+            img = img.convert("RGB")
+        img = img.resize((img_size, img_size))
+        with row_cols[j]:
+            st.image(img, width=img_size)  # explicitly set width
+            if st.checkbox("Select", value=True, key=f"bg_{bg}"):
+                selected_bgs.append(bg)
+
+st.markdown(f"**Selected Backgrounds:** {len(selected_bgs)}" if selected_bgs else "**Selected Backgrounds:** None")
+
+# -----------------------------
+# CHARACTER MULTI-SELECTION
+# -----------------------------
+st.subheader("🖼️ Character Selection")
+selected_chars = []
+
+char_count = len(char_list)
+cols_per_row = min(char_count, 6)
+
+# Dynamically set image size
+if char_count <= 2:
+    img_size = 150
+elif char_count <= 4:
+    img_size = 120
+else:
+    img_size = 80
+
+for i in range(0, char_count, cols_per_row):
+    row_cols = st.columns(cols_per_row, gap="small")
+    for j, c in enumerate(char_list[i:i+cols_per_row]):
+        img_path = os.path.join(character_folder, c)
+        img = Image.open(img_path)
+        if img.mode in ("RGBA", "LA"):
+            img = img.convert("RGB")
+        img = img.resize((img_size, img_size))
+        with row_cols[j]:
+            st.image(img, width=img_size)  # explicitly set width
+            if st.checkbox("Select", value=True, key=f"char_{c}"):
+                selected_chars.append(c)
+
+st.markdown(f"**Selected Characters:** {len(selected_chars)}" if selected_chars else "**Selected Characters:** None")
+
+# -----------------------------
+# VIDEO PARAMETERS
+# -----------------------------
 st.sidebar.header("⚙️ Video Parameters")
 text = st.sidebar.text_input("Overlay Text", "Hello everyone!")
 outline_thickness = st.sidebar.slider("Outline Thickness", 1, 20, 5)
@@ -207,60 +265,77 @@ character_size = st.sidebar.slider("Character Size", 100, 600, 300)
 font_scale = st.sidebar.slider("Font Scale", 0.5, 3.0, 1.5, step=0.1)
 font_thickness = st.sidebar.slider("Font Thickness", 1, 10, 5)
 
-# ======================
-# Multi-combo generation
-# ======================
+# Initialize session_state
+if "generated_videos" not in st.session_state:
+    st.session_state.generated_videos = []
 
-st.subheader("🎥 Generate All Combinations")
-selected_bgs = st.multiselect("Select Background(s)", bg_list, default=bg_list)
-selected_chars = st.multiselect("Select Character(s) (must be no_bg_)", [c for c in char_list if "no_bg_" in c], default=[c for c in char_list if "no_bg_" in c])
+if "col_index" not in st.session_state:
+    st.session_state.col_index = 0
 
+videos_per_row = 5
+
+# -----------------------------
+# Generate videos
+# -----------------------------
 if st.button("Generate All Videos"):
-    if not selected_bgs or not selected_chars:
-        st.warning("⚠️ Select at least one background and one character.")
-    else:
-        generated_videos = []
-        for bg_file, char_file in product(selected_bgs, selected_chars):
-            bg_path = os.path.abspath(os.path.join(background_folder, bg_file)).replace("\\","/")
-            char_path = os.path.abspath(os.path.join(character_folder, char_file)).replace("\\","/")
-            bg_name = os.path.splitext(bg_file)[0]
-            char_name = os.path.splitext(char_file)[0].replace("no_bg_", "")
-            output_path = os.path.join(output_folder, f"{bg_name}_{char_name}.mp4")
-            try:
-                create_spinning_character_video(
-                    bg_path, char_path,
-                    output_path=output_path,
-                    outline_thickness=outline_thickness,
-                    num_turns=num_turns,
-                    duration=duration,
-                    fps=fps,
-                    character_size=(character_size, character_size),
-                    text=text,
-                    font_scale=font_scale,
-                    font_thickness=font_thickness
-                )
-                generated_videos.append(output_path)
-                st.success(f"✅ Generated: {os.path.basename(output_path)}")
-                try:
-                    preview_path = os.path.join(output_folder, os.path.splitext(os.path.basename(output_path))[0] + "_preview.webm")
-                    convert_to_webm(output_path, preview_path)
-                    st.video(preview_path, width=360)
+    for bg_file, char_file in product(selected_bgs, selected_chars):
+        bg_path = os.path.join(background_folder, bg_file)
+        char_path = os.path.join(character_folder, char_file)
+        bg_name = os.path.splitext(bg_file)[0]
+        char_name = os.path.splitext(char_file)[0].replace("no_bg_", "")
+        output_path = os.path.join(output_folder, f"{bg_name}_{char_name}.mp4")
+        preview_path = os.path.join(output_folder, f"{bg_name}_{char_name}_preview.webm")
 
-                except Exception as e:
-                    st.error(f"❌ Failed to create preview for {os.path.basename(output_path)}: {e}")
-            except Exception as e:
-                st.error(f"❌ Failed {bg_file} + {char_file}: {e}")
+        # Skip if already generated
+        if any(v["output"] == output_path for v in st.session_state.generated_videos):
+            continue
 
-        # Download all videos as ZIP
-        if generated_videos:
-            zip_path = os.path.join(output_folder, "all_videos.zip")
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                for vid in generated_videos:
-                    zipf.write(vid, os.path.basename(vid))
-            with open(zip_path, "rb") as f:
-                st.download_button(
-                    "⬇️ Download All Videos",
-                    f,
-                    file_name="all_videos.zip",
-                    mime="application/zip"
-                )
+        try:
+            create_spinning_character_video(
+                bg_path, char_path,
+                output_path=output_path,
+                outline_thickness=outline_thickness,
+                num_turns=num_turns,
+                duration=duration,
+                fps=fps,
+                character_size=(character_size, character_size),
+                text=text,
+                font_scale=font_scale,
+                font_thickness=font_thickness
+            )
+            convert_to_webm(output_path, preview_path)
+
+            # Store in session_state
+            st.session_state.generated_videos.append({
+                "output": output_path,
+                "preview": preview_path
+            })
+
+        except Exception as e:
+            st.error(f"❌ Failed {bg_file} + {char_file}: {e}")
+
+# -----------------------------
+# Display videos and downloads
+# -----------------------------
+row_cols = st.columns(videos_per_row)
+for i, vid in enumerate(st.session_state.generated_videos):
+    with row_cols[i % videos_per_row]:
+        st.video(vid["preview"], width=200)
+        random_download_name = generate_random_name() + ".mp4"
+        with open(vid["output"], "rb") as f:
+            st.download_button("⬇️ Download", data=f, file_name=random_download_name, mime="video/mp4")
+
+# -----------------------------
+# ZIP download
+# -----------------------------
+if st.session_state.generated_videos:
+    zip_name = generate_random_name() + ".zip"
+    zip_path = os.path.join(output_folder, zip_name)
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for vid in st.session_state.generated_videos:
+            if os.path.exists(vid["output"]):
+                zipf.write(vid["output"], os.path.basename(vid["output"]))
+
+    with open(zip_path, "rb") as f:
+        st.download_button("Download All Videos", data=f, file_name=zip_name, mime="application/zip")
