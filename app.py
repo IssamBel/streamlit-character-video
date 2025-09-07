@@ -195,6 +195,8 @@ st.subheader("🖼️ Background Selection")
 selected_bgs = []
 
 bg_count = len(bg_list)
+if bg_count == 0:
+    st.warning("⚠️ No background images uploaded.")
 cols_per_row = min(bg_count, 6)  # max 6 columns
 
 # Dynamically set image size
@@ -227,6 +229,8 @@ st.subheader("🖼️ Character Selection")
 selected_chars = []
 
 char_count = len(char_list)
+if char_count == 0:
+    st.warning("⚠️ No Character images uploaded.")
 cols_per_row = min(char_count, 6)
 
 # Dynamically set image size
@@ -339,3 +343,4 @@ if st.session_state.generated_videos:
 
     with open(zip_path, "rb") as f:
         st.download_button("Download All Videos", data=f, file_name=zip_name, mime="application/zip")
+
