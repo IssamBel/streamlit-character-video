@@ -150,6 +150,21 @@ def create_spinning_character_video(
 # FOLDERS
 # -----------------------------
 st.title("🎬 Multi-Combo Character Video Generator")
+st.markdown(
+    """
+    Welcome! This tool allows you to **create spinning character videos** by combining your uploaded 
+    backgrounds and characters. You can customize the number of spins, duration, overlay text, and 
+    other video parameters.  
+
+    **How to use:**
+    1. Upload background images and character images in the sidebar.
+    2. Select the backgrounds and characters you want to include.
+    3. Adjust video parameters like spins, duration, and text overlay.
+    4. Click **Generate All Videos** to create previews and download individual videos or a ZIP of all combinations.
+    
+    ⚠️ Make sure to upload at least one background and one character to generate videos.
+    """
+)
 background_folder = "backgrounds"
 character_folder = "characters"
 output_folder = "videos"
@@ -345,5 +360,6 @@ if st.session_state.generated_videos:
 
     with open(zip_path, "rb") as f:
         st.download_button("Download All Videos", data=f, file_name=zip_name, mime="application/zip")
+
 
 
