@@ -1,7 +1,7 @@
-
 streamlit
 opencv-python
 numpy
 rembg
 Pillow
 moviepy==1.0.3
+opencv-python-headless
