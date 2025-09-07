@@ -197,30 +197,31 @@ selected_bgs = []
 bg_count = len(bg_list)
 if bg_count == 0:
     st.warning("⚠️ No background images uploaded.")
-cols_per_row = min(bg_count, 6)  # max 6 columns
-
-# Dynamically set image size
-if bg_count <= 2:
-    img_size = 150
-elif bg_count <= 4:
-    img_size = 120
 else:
-    img_size = 80
-
-for i in range(0, bg_count, cols_per_row):
-    row_cols = st.columns(cols_per_row, gap="small")
-    for j, bg in enumerate(bg_list[i:i+cols_per_row]):
-        img_path = os.path.join(background_folder, bg)
-        img = Image.open(img_path)
-        if img.mode in ("RGBA", "LA"):
-            img = img.convert("RGB")
-        img = img.resize((img_size, img_size))
-        with row_cols[j]:
-            st.image(img, width=img_size)  # explicitly set width
-            if st.checkbox("Select", value=True, key=f"bg_{bg}"):
-                selected_bgs.append(bg)
-
-st.markdown(f"**Selected Backgrounds:** {len(selected_bgs)}" if selected_bgs else "**Selected Backgrounds:** None")
+    cols_per_row = min(bg_count, 6)  # max 6 columns
+    
+    # Dynamically set image size
+    if bg_count <= 2:
+        img_size = 150
+    elif bg_count <= 4:
+        img_size = 120
+    else:
+        img_size = 80
+    
+    for i in range(0, bg_count, cols_per_row):
+        row_cols = st.columns(cols_per_row, gap="small")
+        for j, bg in enumerate(bg_list[i:i+cols_per_row]):
+            img_path = os.path.join(background_folder, bg)
+            img = Image.open(img_path)
+            if img.mode in ("RGBA", "LA"):
+                img = img.convert("RGB")
+            img = img.resize((img_size, img_size))
+            with row_cols[j]:
+                st.image(img, width=img_size)  # explicitly set width
+                if st.checkbox("Select", value=True, key=f"bg_{bg}"):
+                    selected_bgs.append(bg)
+    
+    st.markdown(f"**Selected Backgrounds:** {len(selected_bgs)}" if selected_bgs else "**Selected Backgrounds:** None")
 
 # -----------------------------
 # CHARACTER MULTI-SELECTION
@@ -231,30 +232,31 @@ selected_chars = []
 char_count = len(char_list)
 if char_count == 0:
     st.warning("⚠️ No Character images uploaded.")
-cols_per_row = min(char_count, 6)
-
-# Dynamically set image size
-if char_count <= 2:
-    img_size = 150
-elif char_count <= 4:
-    img_size = 120
 else:
-    img_size = 80
-
-for i in range(0, char_count, cols_per_row):
-    row_cols = st.columns(cols_per_row, gap="small")
-    for j, c in enumerate(char_list[i:i+cols_per_row]):
-        img_path = os.path.join(character_folder, c)
-        img = Image.open(img_path)
-        if img.mode in ("RGBA", "LA"):
-            img = img.convert("RGB")
-        img = img.resize((img_size, img_size))
-        with row_cols[j]:
-            st.image(img, width=img_size)  # explicitly set width
-            if st.checkbox("Select", value=True, key=f"char_{c}"):
-                selected_chars.append(c)
-
-st.markdown(f"**Selected Characters:** {len(selected_chars)}" if selected_chars else "**Selected Characters:** None")
+    cols_per_row = min(char_count, 6)
+    
+    # Dynamically set image size
+    if char_count <= 2:
+        img_size = 150
+    elif char_count <= 4:
+        img_size = 120
+    else:
+        img_size = 80
+    
+    for i in range(0, char_count, cols_per_row):
+        row_cols = st.columns(cols_per_row, gap="small")
+        for j, c in enumerate(char_list[i:i+cols_per_row]):
+            img_path = os.path.join(character_folder, c)
+            img = Image.open(img_path)
+            if img.mode in ("RGBA", "LA"):
+                img = img.convert("RGB")
+            img = img.resize((img_size, img_size))
+            with row_cols[j]:
+                st.image(img, width=img_size)  # explicitly set width
+                if st.checkbox("Select", value=True, key=f"char_{c}"):
+                    selected_chars.append(c)
+    
+    st.markdown(f"**Selected Characters:** {len(selected_chars)}" if selected_chars else "**Selected Characters:** None")
 
 # -----------------------------
 # VIDEO PARAMETERS
@@ -343,4 +345,5 @@ if st.session_state.generated_videos:
 
     with open(zip_path, "rb") as f:
         st.download_button("Download All Videos", data=f, file_name=zip_name, mime="application/zip")
+
 
